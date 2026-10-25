@@ -189,8 +189,21 @@ class _NoorAppState extends State<NoorApp> {
           child: child ?? const SizedBox.shrink(),
         );
       },
-      home: _buildHome(),
+      home: _HomeSwitcher(stateKey: _homeStateKey(), child: _buildHome()),
     );
+  }
+
+  String _homeStateKey() {
+    if (!_ready) {
+      return 'splash';
+    }
+    if (_startupFailed) {
+      return 'error';
+    }
+    if (_authController?.isSignedIn != true) {
+      return 'signup';
+    }
+    return 'shell';
   }
 
   Widget _buildHome() {
@@ -230,6 +243,44 @@ class _NoorAppState extends State<NoorApp> {
       compassController: compass,
       themeController: theme,
       onResetData: _resetAllData,
+    );
+  }
+}
+
+class _HomeSwitcher extends StatelessWidget {
+  const _HomeSwitcher({required this.stateKey, required this.child});
+
+  final String stateKey;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool reduceMotion = MediaQuery.of(context).disableAnimations;
+    return AnimatedSwitcher(
+      duration:
+          reduceMotion ? Duration.zero : const Duration(milliseconds: 420),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
+        return Stack(
+          fit: StackFit.expand,
+          alignment: Alignment.center,
+          children: <Widget>[
+            ...previousChildren,
+            if (currentChild != null) currentChild,
+          ],
+        );
+      },
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: animation.drive(Tween<double>(begin: 0.985, end: 1)),
+            child: child,
+          ),
+        );
+      },
+      child: KeyedSubtree(key: ValueKey<String>(stateKey), child: child),
     );
   }
 }

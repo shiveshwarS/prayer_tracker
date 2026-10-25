@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/prayer.dart';
 import '../models/prayer_history.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_palette.dart';
 import '../utils/calendar_utils.dart';
 import '../utils/date_utils.dart';
@@ -19,6 +20,7 @@ class StreakCalendar extends StatefulWidget {
 class _StreakCalendarState extends State<StreakCalendar> {
   late DateTime _visibleMonth;
   DateTime? _selectedDate;
+  int _monthDirection = 0;
 
   @override
   void initState() {
@@ -49,6 +51,7 @@ class _StreakCalendarState extends State<StreakCalendar> {
     setState(() {
       _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month - 1);
       _selectedDate = null;
+      _monthDirection = -1;
     });
   }
 
@@ -59,13 +62,17 @@ class _StreakCalendarState extends State<StreakCalendar> {
     setState(() {
       _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1);
       _selectedDate = null;
+      _monthDirection = 1;
     });
   }
 
   void _showToday() {
+    final DateTime current = DateTime(_visibleMonth.year, _visibleMonth.month);
+    final DateTime target = DateTime(widget.today.year, widget.today.month);
     setState(() {
-      _visibleMonth = DateTime(widget.today.year, widget.today.month);
+      _visibleMonth = target;
       _selectedDate = AppDate.dateOnly(widget.today);
+      _monthDirection = current.isBefore(target) ? 1 : -1;
     });
   }
 
@@ -74,6 +81,11 @@ class _StreakCalendarState extends State<StreakCalendar> {
     final AppPalette palette = context.palette;
     final TextTheme textTheme = Theme.of(context).textTheme;
     final MonthGrid grid = MonthGrid.forMonth(_visibleMonth);
+    final Duration motion = AppMotion.resolve(
+      context,
+      const Duration(milliseconds: 220),
+    );
+    final String monthKey = AppDate.dateKey(_visibleMonth);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -101,10 +113,10 @@ class _StreakCalendarState extends State<StreakCalendar> {
                     ),
                     const SizedBox(height: 3),
                     AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
+                      duration: motion,
                       child: Text(
                         AppDate.formatMonthYear(_visibleMonth),
-                        key: ValueKey<String>(AppDate.dateKey(_visibleMonth)),
+                        key: ValueKey<String>(monthKey),
                         style: textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.3,
@@ -159,36 +171,59 @@ class _StreakCalendarState extends State<StreakCalendar> {
             ],
           ),
           const SizedBox(height: 6),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.zero,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              mainAxisSpacing: 5,
-              crossAxisSpacing: 5,
-              childAspectRatio: 0.82,
-            ),
-            itemCount: grid.cells.length,
-            itemBuilder: (BuildContext context, int index) {
-              final DateTime? date = grid.cells[index].date;
-              if (date == null) {
-                return const SizedBox.shrink();
-              }
-              return _DayCell(
-                date: date,
-                today: widget.today,
-                completed: widget.history.completedForDate(date),
-                selected:
-                    _selectedDate != null &&
-                    AppDate.sameDay(_selectedDate!, date),
-                onTap: () {
-                  setState(() {
-                    _selectedDate = date;
-                  });
+          AnimatedSize(
+            duration: motion,
+            curve: AppMotion.enter,
+            alignment: Alignment.topCenter,
+            child: AnimatedSwitcher(
+              duration: motion,
+              switchInCurve: AppMotion.enter,
+              switchOutCurve: AppMotion.exit,
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: Offset(_monthDirection * 0.06, 0),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: GridView.builder(
+                key: ValueKey<String>(monthKey),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.zero,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  mainAxisSpacing: 5,
+                  crossAxisSpacing: 5,
+                  childAspectRatio: 0.82,
+                ),
+                itemCount: grid.cells.length,
+                itemBuilder: (BuildContext context, int index) {
+                  final DateTime? date = grid.cells[index].date;
+                  if (date == null) {
+                    return const SizedBox.shrink();
+                  }
+                  return _DayCell(
+                    date: date,
+                    today: widget.today,
+                    completed: widget.history.completedForDate(date),
+                    selected:
+                        _selectedDate != null &&
+                        AppDate.sameDay(_selectedDate!, date),
+                    onTap: () {
+                      setState(() {
+                        _selectedDate = date;
+                      });
+                    },
+                  );
                 },
-              );
-            },
+              ),
+            ),
           ),
           const SizedBox(height: 14),
           Row(
@@ -234,18 +269,41 @@ class _StreakCalendarState extends State<StreakCalendar> {
             ],
           ),
           AnimatedSize(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
+            duration: motion,
+            curve: AppMotion.enter,
             alignment: Alignment.topCenter,
             child:
                 _selectedDate == null
                     ? const SizedBox(width: double.infinity)
                     : Padding(
                       padding: const EdgeInsets.only(top: 14),
-                      child: _DayDetail(
-                        date: _selectedDate!,
-                        completed: widget.history.completedForDate(
-                          _selectedDate!,
+                      child: AnimatedSwitcher(
+                        duration: motion,
+                        switchInCurve: AppMotion.enter,
+                        switchOutCurve: AppMotion.exit,
+                        transitionBuilder: (
+                          Widget child,
+                          Animation<double> animation,
+                        ) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, 0.08),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: _DayDetail(
+                          key: ValueKey<String>(
+                            AppDate.dateKey(_selectedDate!),
+                          ),
+                          date: _selectedDate!,
+                          completed: widget.history.completedForDate(
+                            _selectedDate!,
+                          ),
                         ),
                       ),
                     ),
@@ -323,6 +381,10 @@ class _DayCell extends StatelessWidget {
                 : palette.inverseInk);
     final Color dotColor = foreground.withValues(alpha: 0.75);
     final Color emptyDotColor = foreground.withValues(alpha: 0.2);
+    final Duration motion = AppMotion.resolve(
+      context,
+      const Duration(milliseconds: 180),
+    );
 
     return Semantics(
       button: !isFuture,
@@ -335,55 +397,63 @@ class _DayCell extends StatelessWidget {
                   '$count of 5 prayers completed',
       child: GestureDetector(
         onTap: isFuture ? null : onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.fromLTRB(2, 5, 2, 4),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(9),
-            border: Border.all(
-              color:
-                  selected
-                      ? foreground
-                      : isToday
-                      ? foreground.withValues(alpha: 0.72)
-                      : Colors.transparent,
-              width: selected ? 2 : 1.3,
+        child: AnimatedScale(
+          scale: selected ? 1.04 : 1,
+          duration: motion,
+          curve: AppMotion.spring,
+          child: AnimatedContainer(
+            duration: motion,
+            curve: AppMotion.enter,
+            padding: const EdgeInsets.fromLTRB(2, 5, 2, 4),
+            decoration: BoxDecoration(
+              color: background,
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(
+                color:
+                    selected
+                        ? foreground
+                        : isToday
+                        ? foreground.withValues(alpha: 0.72)
+                        : Colors.transparent,
+                width: selected ? 2 : 1.3,
+              ),
             ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: <Widget>[
-              Text(
-                '${date.day}',
-                style: textTheme.labelSmall?.copyWith(
-                  color: foreground,
-                  fontSize: 10.5,
-                  height: 1,
-                  fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Text(
+                  '${date.day}',
+                  style: textTheme.labelSmall?.copyWith(
+                    color: foreground,
+                    fontSize: 10.5,
+                    height: 1,
+                    fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,
+                  ),
                 ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  for (final PrayerId prayer in PrayerId.values) ...<Widget>[
-                    Container(
-                      width: 3.4,
-                      height: 3.4,
-                      decoration: BoxDecoration(
-                        color:
-                            completed.contains(prayer)
-                                ? dotColor
-                                : emptyDotColor,
-                        shape: BoxShape.circle,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    for (final PrayerId prayer in PrayerId.values) ...<Widget>[
+                      AnimatedContainer(
+                        duration: motion,
+                        curve: AppMotion.enter,
+                        width: completed.contains(prayer) ? 4.2 : 3.4,
+                        height: completed.contains(prayer) ? 4.2 : 3.4,
+                        decoration: BoxDecoration(
+                          color:
+                              completed.contains(prayer)
+                                  ? dotColor
+                                  : emptyDotColor,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    if (prayer != PrayerId.values.last)
-                      const SizedBox(width: 1.2),
+                      if (prayer != PrayerId.values.last)
+                        const SizedBox(width: 1.2),
+                    ],
                   ],
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -392,7 +462,7 @@ class _DayCell extends StatelessWidget {
 }
 
 class _DayDetail extends StatelessWidget {
-  const _DayDetail({required this.date, required this.completed});
+  const _DayDetail({super.key, required this.date, required this.completed});
 
   final DateTime date;
   final Set<PrayerId> completed;

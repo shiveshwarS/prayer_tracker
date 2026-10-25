@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_motion.dart';
 import '../theme/app_palette.dart';
+import 'animated_count.dart';
 import 'geometric_pattern.dart';
 import 'progress_ring.dart';
 
@@ -22,6 +24,11 @@ class ProgressCard extends StatelessWidget {
     final TextTheme textTheme = Theme.of(context).textTheme;
     final String message = _messageFor(completed);
     final int percent = total == 0 ? 0 : ((completed / total) * 100).round();
+    final bool isComplete = total > 0 && completed >= total;
+    final Duration motion = AppMotion.resolve(
+      context,
+      const Duration(milliseconds: 320),
+    );
 
     return Semantics(
       container: true,
@@ -51,6 +58,27 @@ class ProgressCard extends StatelessWidget {
                 spacing: 42,
               ),
             ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedOpacity(
+                  duration: motion,
+                  curve: AppMotion.enter,
+                  opacity: isComplete ? 1 : 0,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: const Alignment(0.72, -0.55),
+                        radius: 1.15,
+                        colors: <Color>[
+                          palette.inverseInk.withValues(alpha: 0.16),
+                          palette.inverseInk.withValues(alpha: 0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(22, 22, 20, 16),
               child: Column(
@@ -75,8 +103,10 @@ class ProgressCard extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                Text(
-                                  '$percent%',
+                                AnimatedCount(
+                                  value: percent,
+                                  suffix: '%',
+                                  duration: const Duration(milliseconds: 420),
                                   style: textTheme.labelMedium?.copyWith(
                                     color: palette.inverseInk.withValues(
                                       alpha: 0.7,
@@ -87,18 +117,58 @@ class ProgressCard extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 14),
-                            Text(
-                              '$completed of $total',
-                              style: textTheme.displayMedium?.copyWith(
-                                color: palette.inverseInk,
-                                height: 0.95,
-                              ),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: <Widget>[
+                                AnimatedCount(
+                                  value: completed,
+                                  duration: const Duration(milliseconds: 520),
+                                  style: textTheme.displayMedium?.copyWith(
+                                    color: palette.inverseInk,
+                                    height: 0.95,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 7),
+                                  child: Text(
+                                    'of $total',
+                                    style: textTheme.titleMedium?.copyWith(
+                                      color: palette.inverseInk.withValues(
+                                        alpha: 0.58,
+                                      ),
+                                      fontWeight: FontWeight.w600,
+                                      height: 1,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 10),
                             ConstrainedBox(
                               constraints: const BoxConstraints(maxWidth: 190),
                               child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 260),
+                                duration: AppMotion.resolve(
+                                  context,
+                                  const Duration(milliseconds: 300),
+                                ),
+                                switchInCurve: AppMotion.enter,
+                                switchOutCurve: AppMotion.exit,
+                                transitionBuilder: (
+                                  Widget child,
+                                  Animation<double> animation,
+                                ) {
+                                  return FadeTransition(
+                                    opacity: animation,
+                                    child: SlideTransition(
+                                      position: Tween<Offset>(
+                                        begin: const Offset(0, 0.12),
+                                        end: Offset.zero,
+                                      ).animate(animation),
+                                      child: child,
+                                    ),
+                                  );
+                                },
                                 child: Text(
                                   message,
                                   key: ValueKey<String>(message),

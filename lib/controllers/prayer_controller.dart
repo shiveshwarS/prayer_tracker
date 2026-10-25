@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/prayer.dart';
 import '../models/prayer_history.dart';
+import '../models/prayer_moment.dart';
 import '../models/streak_summary.dart';
 import '../services/local_storage_service.dart';
 import '../utils/date_utils.dart';
@@ -21,10 +22,13 @@ class PrayerController extends ChangeNotifier {
   String _activeDateKey = '';
   Future<void> _writeQueue = Future<void>.value();
   bool _persistenceFailed = false;
+  int _momentSequence = 0;
+  PrayerMoment? _lastMoment;
 
   PrayerHistory get history => _history;
   bool get isInitialized => _isInitialized;
   bool get persistenceFailed => _persistenceFailed;
+  PrayerMoment? get lastMoment => _lastMoment;
 
   DateTime get today => AppDate.dateOnly(_clock());
 
@@ -63,8 +67,28 @@ class PrayerController extends ChangeNotifier {
 
   /// Returns true when the prayer is now completed.
   bool togglePrayer(PrayerId prayer) {
+    final StreakSummary before = summary;
     final bool completed = _history.toggle(today, prayer);
     _activeDateKey = AppDate.dateKey(today);
+    if (completed) {
+      final StreakSummary after = summary;
+      _momentSequence++;
+      _lastMoment = PrayerMoment(
+        sequence: _momentSequence,
+        prayer: prayer,
+        date: today,
+        completedCount: after.todayCompleted,
+        total: PrayerId.values.length,
+        dayCompleted: !before.todayComplete && after.todayComplete,
+        currentStreak: after.currentStreak,
+        milestone:
+            after.currentStreak > before.currentStreak &&
+                    PrayerMoment.milestones.contains(after.currentStreak)
+                ? after.currentStreak
+                : null,
+        newPersonalBest: after.longestStreak > before.longestStreak,
+      );
+    }
     notifyListeners();
     _schedulePersist();
     return completed;
@@ -92,6 +116,7 @@ class PrayerController extends ChangeNotifier {
   void clearLocal() {
     _history.clear();
     _persistenceFailed = false;
+    _lastMoment = null;
     notifyListeners();
   }
 }

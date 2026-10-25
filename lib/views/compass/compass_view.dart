@@ -1,10 +1,12 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../controllers/compass_controller.dart';
 import '../../controllers/prayer_times_controller.dart';
 import '../../models/saved_location.dart';
+import '../../theme/app_motion.dart';
 import '../../theme/app_palette.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/location_sheet.dart';
@@ -27,11 +29,14 @@ class CompassView extends StatefulWidget {
 
 class _CompassViewState extends State<CompassView> with WidgetsBindingObserver {
   bool _appActive = true;
+  late bool _wasAligned;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _wasAligned = widget.compassController.isAligned;
+    widget.compassController.addListener(_handleAlignment);
     widget.prayerTimesController.addListener(_syncActive);
     _syncActive();
   }
@@ -39,11 +44,24 @@ class _CompassViewState extends State<CompassView> with WidgetsBindingObserver {
   @override
   void didUpdateWidget(covariant CompassView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.compassController != widget.compassController) {
+      oldWidget.compassController.removeListener(_handleAlignment);
+      _wasAligned = widget.compassController.isAligned;
+      widget.compassController.addListener(_handleAlignment);
+    }
     if (oldWidget.prayerTimesController != widget.prayerTimesController) {
       oldWidget.prayerTimesController.removeListener(_syncActive);
       widget.prayerTimesController.addListener(_syncActive);
     }
     _syncActive();
+  }
+
+  void _handleAlignment() {
+    final bool aligned = widget.compassController.isAligned;
+    if (aligned && !_wasAligned && widget.isActive && _appActive) {
+      HapticFeedback.mediumImpact();
+    }
+    _wasAligned = aligned;
   }
 
   @override
@@ -64,6 +82,7 @@ class _CompassViewState extends State<CompassView> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    widget.compassController.removeListener(_handleAlignment);
     widget.prayerTimesController.removeListener(_syncActive);
     widget.compassController.setActive(false);
     super.dispose();
@@ -347,10 +366,15 @@ class _CompassCard extends StatelessWidget {
     final TextTheme textTheme = Theme.of(context).textTheme;
     final bool isReady = compass.sensorState == CompassSensorState.ready;
     final double? heading = compass.heading;
+    final double? unwrappedHeading = compass.unwrappedHeading;
     final bool isAligned = compass.isAligned;
+    final Duration motion = AppMotion.resolve(
+      context,
+      const Duration(milliseconds: 240),
+    );
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 260),
+      duration: motion,
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
       decoration: BoxDecoration(
@@ -406,8 +430,13 @@ class _CompassCard extends StatelessWidget {
                   alignment: Alignment.center,
                   children: <Widget>[
                     if (isReady && heading != null)
-                      Transform.rotate(
-                        angle: -heading * math.pi / 180,
+                      AnimatedRotation(
+                        turns: -(unwrappedHeading ?? heading) / 360,
+                        duration: AppMotion.resolve(
+                          context,
+                          const Duration(milliseconds: 160),
+                        ),
+                        curve: AppMotion.enter,
                         child: SizedBox.square(
                           dimension: dialSize,
                           child: CustomPaint(
@@ -435,18 +464,37 @@ class _CompassCard extends StatelessWidget {
                         ),
                       ),
                     Positioned(top: 0, child: _TopPointer(color: palette.ink)),
-                    Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: palette.ink,
-                        border: Border.all(color: palette.surface, width: 4),
-                      ),
-                      child: Icon(
-                        Icons.mosque_rounded,
-                        size: 23,
-                        color: palette.inverseInk,
+                    AnimatedScale(
+                      scale: isAligned ? 1.08 : 1,
+                      duration: motion,
+                      curve: AppMotion.spring,
+                      child: AnimatedContainer(
+                        duration: motion,
+                        curve: AppMotion.enter,
+                        width: isAligned ? 60 : 54,
+                        height: isAligned ? 60 : 54,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: palette.ink,
+                          border: Border.all(color: palette.surface, width: 4),
+                          boxShadow:
+                              isAligned
+                                  ? <BoxShadow>[
+                                    BoxShadow(
+                                      color: palette.ink.withValues(
+                                        alpha: 0.16,
+                                      ),
+                                      blurRadius: 18,
+                                      spreadRadius: 3,
+                                    ),
+                                  ]
+                                  : const <BoxShadow>[],
+                        ),
+                        child: Icon(
+                          Icons.mosque_rounded,
+                          size: isAligned ? 25 : 23,
+                          color: palette.inverseInk,
+                        ),
                       ),
                     ),
                   ],
@@ -456,7 +504,9 @@ class _CompassCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
+            duration: motion,
+            switchInCurve: AppMotion.enter,
+            switchOutCurve: AppMotion.exit,
             child: _CompassStatus(
               key: ValueKey<String>('${compass.sensorState}-$isAligned'),
               state: compass.sensorState,

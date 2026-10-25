@@ -5,6 +5,7 @@ import 'package:prayer_tracker/controllers/prayer_controller.dart';
 import 'package:prayer_tracker/controllers/prayer_times_controller.dart';
 import 'package:prayer_tracker/controllers/theme_controller.dart';
 import 'package:prayer_tracker/models/prayer.dart';
+import 'package:prayer_tracker/models/prayer_moment.dart';
 import 'package:prayer_tracker/models/prayer_settings.dart';
 import 'package:prayer_tracker/models/saved_location.dart';
 import 'package:prayer_tracker/services/local_storage_service.dart';
@@ -127,6 +128,74 @@ void main() {
       controller.togglePrayer(PrayerId.fajr);
       expect(controller.todayCompleted, 1);
       expect(controller.currentStreak, 1);
+    });
+
+    test(
+      'emits a moment for each completion and a full-day celebration',
+      () async {
+        final LocalStorageService storage = await createStorage();
+        final PrayerController controller = PrayerController(
+          storage: storage,
+          clock: () => DateTime(2026, 10, 25, 20),
+        );
+        await controller.initialize();
+        expect(controller.lastMoment, isNull);
+
+        controller.togglePrayer(PrayerId.fajr);
+        PrayerMoment? moment = controller.lastMoment;
+        expect(moment, isNotNull);
+        expect(moment!.sequence, 1);
+        expect(moment.prayer, PrayerId.fajr);
+        expect(moment.completedCount, 1);
+        expect(moment.dayCompleted, isFalse);
+        expect(moment.milestone, isNull);
+        expect(moment.hasCelebration, isFalse);
+
+        for (final PrayerId prayer in PrayerId.values.skip(1)) {
+          controller.togglePrayer(prayer);
+        }
+
+        moment = controller.lastMoment;
+        expect(moment, isNotNull);
+        expect(moment!.sequence, PrayerId.values.length);
+        expect(moment.completedCount, PrayerId.values.length);
+        expect(moment.dayCompleted, isTrue);
+        expect(moment.currentStreak, 1);
+        expect(moment.milestone, 1);
+        expect(moment.newPersonalBest, isTrue);
+        expect(moment.hasCelebration, isTrue);
+
+        controller.clearLocal();
+        expect(controller.lastMoment, isNull);
+      },
+    );
+
+    test('marks streak milestones as they are reached', () async {
+      DateTime now = DateTime(2026, 10, 25, 20);
+      final LocalStorageService storage = await createStorage();
+      final PrayerController controller = PrayerController(
+        storage: storage,
+        clock: () => now,
+      );
+      await controller.initialize();
+
+      final List<int> milestones = <int>[];
+      for (int day = 0; day < 3; day++) {
+        if (day > 0) {
+          now = now.add(const Duration(days: 1));
+          controller.refreshToday();
+        }
+        for (final PrayerId prayer in PrayerId.values) {
+          controller.togglePrayer(prayer);
+        }
+        final int? milestone = controller.lastMoment?.milestone;
+        if (milestone != null) {
+          milestones.add(milestone);
+        }
+      }
+
+      expect(milestones, <int>[1, 3]);
+      await controller.flush();
     });
   });
 

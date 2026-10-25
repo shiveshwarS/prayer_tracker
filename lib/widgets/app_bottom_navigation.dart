@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_motion.dart';
 import '../theme/app_palette.dart';
 
 class AppBottomNavigation extends StatelessWidget {
@@ -75,6 +76,10 @@ class _NavDestination extends StatelessWidget {
     final AppPalette palette = context.palette;
     final Color iconColor = isSelected ? palette.inverseInk : palette.inkMuted;
     final Color labelColor = isSelected ? palette.ink : palette.inkMuted;
+    final Duration motion = AppMotion.resolve(
+      context,
+      const Duration(milliseconds: 240),
+    );
     return Expanded(
       child: Semantics(
         selected: isSelected,
@@ -88,24 +93,52 @@ class _NavDestination extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 240),
-                  curve: Curves.easeOutCubic,
-                  width: 48,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: isSelected ? palette.ink : Colors.transparent,
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                  child: Icon(
-                    isSelected ? activeIcon : icon,
-                    size: 21,
-                    color: iconColor,
+                AnimatedScale(
+                  scale: isSelected ? 1.05 : 1,
+                  duration: motion,
+                  curve: AppMotion.spring,
+                  child: AnimatedContainer(
+                    duration: motion,
+                    curve: AppMotion.enter,
+                    width: 48,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: isSelected ? palette.ink : Colors.transparent,
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: motion,
+                      switchInCurve: AppMotion.enter,
+                      switchOutCurve: AppMotion.exit,
+                      transitionBuilder: (
+                        Widget child,
+                        Animation<double> animation,
+                      ) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(
+                            scale: animation.drive(
+                              Tween<double>(
+                                begin: 0.82,
+                                end: 1,
+                              ).chain(CurveTween(curve: AppMotion.spring)),
+                            ),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Icon(
+                        isSelected ? activeIcon : icon,
+                        key: ValueKey<bool>(isSelected),
+                        size: 21,
+                        color: iconColor,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
                 AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 240),
+                  duration: motion,
                   style:
                       Theme.of(context).textTheme.labelSmall?.copyWith(
                         letterSpacing: 0.2,

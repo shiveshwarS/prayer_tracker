@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../models/prayer_moment.dart';
 import '../models/streak_summary.dart';
 import '../theme/app_palette.dart';
 import '../utils/date_utils.dart';
@@ -25,7 +25,6 @@ class CompanionWidget extends StatefulWidget {
 
 class _CompanionWidgetState extends State<CompanionWidget>
     with TickerProviderStateMixin {
-  static const Set<int> _milestones = <int>{1, 3, 7, 14, 30};
   static const Duration _idleDuration = Duration(milliseconds: 5600);
 
   late final AnimationController _idleController;
@@ -111,7 +110,7 @@ class _CompanionWidgetState extends State<CompanionWidget>
     }
 
     if (current.currentStreak > previous.currentStreak &&
-        _milestones.contains(current.currentStreak)) {
+        PrayerMoment.milestones.contains(current.currentStreak)) {
       if (_celebratedKeys.add('streak-${current.currentStreak}-$dayKey')) {
         shouldCelebrate = true;
       }
@@ -119,7 +118,6 @@ class _CompanionWidgetState extends State<CompanionWidget>
 
     if (shouldCelebrate) {
       _celebrationController.forward(from: 0);
-      HapticFeedback.mediumImpact();
     }
     return shouldCelebrate;
   }

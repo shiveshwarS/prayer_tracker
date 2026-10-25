@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_motion.dart';
 import '../theme/app_palette.dart';
 
 class SectionHeader extends StatelessWidget {
@@ -50,11 +51,35 @@ class SectionHeader extends StatelessWidget {
           onAction == null
               ? Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  actionLabel!,
-                  style: textTheme.labelMedium?.copyWith(
-                    color: palette.inkMuted,
-                    fontWeight: FontWeight.w700,
+                child: AnimatedSwitcher(
+                  duration: AppMotion.resolve(
+                    context,
+                    const Duration(milliseconds: 220),
+                  ),
+                  switchInCurve: AppMotion.enter,
+                  switchOutCurve: AppMotion.exit,
+                  transitionBuilder: (
+                    Widget child,
+                    Animation<double> animation,
+                  ) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.35),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Text(
+                    actionLabel!,
+                    key: ValueKey<String>(actionLabel!),
+                    style: textTheme.labelMedium?.copyWith(
+                      color: palette.inkMuted,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               )
