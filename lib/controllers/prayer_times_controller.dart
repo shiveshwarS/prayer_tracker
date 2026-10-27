@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/prayer.dart';
@@ -6,6 +8,7 @@ import '../models/prayer_times.dart';
 import '../models/saved_location.dart';
 import '../services/local_storage_service.dart';
 import '../services/location_service.dart';
+import '../services/prayer_alarm_service.dart';
 import '../services/prayer_time_service.dart';
 import '../utils/date_utils.dart';
 
@@ -96,6 +99,7 @@ class PrayerTimesController extends ChangeNotifier {
     _isLocating = false;
     notifyListeners();
     await _persistSettings();
+    unawaited(_rescheduleAlarms());
     return null;
   }
 
@@ -109,6 +113,7 @@ class PrayerTimesController extends ChangeNotifier {
     _recalculate();
     notifyListeners();
     await _persistSettings();
+    unawaited(_rescheduleAlarms());
   }
 
   Future<void> setMethod(PrayerCalculationMethod method) async {
@@ -119,6 +124,7 @@ class PrayerTimesController extends ChangeNotifier {
     _recalculate();
     notifyListeners();
     await _persistSettings();
+    unawaited(_rescheduleAlarms());
   }
 
   Future<void> setMadhab(AsrMadhab madhab) async {
@@ -129,6 +135,14 @@ class PrayerTimesController extends ChangeNotifier {
     _recalculate();
     notifyListeners();
     await _persistSettings();
+    unawaited(_rescheduleAlarms());
+  }
+
+  Future<void> updateAlarmSettings(PrayerAlarmConfig alarm) async {
+    _settings = _settings.copyWith(alarm: alarm);
+    notifyListeners();
+    await _persistSettings();
+    unawaited(_rescheduleAlarms());
   }
 
   Future<void> clearLocation() async {
@@ -145,6 +159,22 @@ class PrayerTimesController extends ChangeNotifier {
     if (_calculatedDate == null || !AppDate.sameDay(_calculatedDate!, today)) {
       _recalculate();
       notifyListeners();
+      unawaited(_rescheduleAlarms());
+    } else {
+      unawaited(_rescheduleAlarms());
+    }
+  }
+
+  Future<void> rescheduleAlarms() => _rescheduleAlarms();
+
+  Future<void> _rescheduleAlarms() async {
+    try {
+      await PrayerAlarmService.instance.rescheduleAll(
+        times: _times,
+        alarmConfig: _settings.alarm,
+      );
+    } on Object {
+      // Ignore
     }
   }
 
