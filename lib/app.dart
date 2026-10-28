@@ -11,6 +11,7 @@ import 'controllers/prayer_times_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'services/local_storage_service.dart';
 import 'services/location_service.dart';
+import 'services/prayer_alarm_service.dart';
 import 'services/prayer_time_service.dart';
 import 'theme/app_palette.dart';
 import 'theme/app_theme.dart';
@@ -76,6 +77,15 @@ class _NoorAppState extends State<NoorApp> {
         prayer.initialize(),
         prayerTimes.initialize(),
       ]);
+
+      try {
+        await PrayerAlarmService.instance.rescheduleAll(
+          times: prayerTimes.times,
+          alarmConfig: prayerTimes.settings.alarm,
+        );
+      } on Object {
+        // Ignore alarm scheduling errors
+      }
 
       final Duration minimumSplash = const Duration(milliseconds: 1050);
       if (stopwatch.elapsed < minimumSplash) {

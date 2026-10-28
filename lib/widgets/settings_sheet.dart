@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../controllers/prayer_times_controller.dart';
 import '../controllers/theme_controller.dart';
 import '../models/prayer_settings.dart';
 import '../models/saved_location.dart';
+import '../services/prayer_alarm_service.dart';
 import '../theme/app_palette.dart';
 import '../utils/date_utils.dart';
 import 'location_sheet.dart';
@@ -179,6 +182,57 @@ class _SettingsSheetState extends State<SettingsSheet> {
                 ),
                 const SizedBox(height: 12),
                 _SettingsCard(
+                  title: 'Prayer alarms',
+                  description:
+                      'Full-screen alarm like a clock app for all prayers. Works even if the app is closed.',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Enable prayer alarms'),
+                        subtitle: const Text('Alarm for Fajr, Dhuhr, Asr, Maghrib, Isha'),
+                        value: settings.alarm.enabled,
+                        onChanged: (bool value) async {
+                          await PrayerAlarmService.instance.ensurePermissions();
+                          await widget.prayerTimesController.updateAlarmSettings(
+                            settings.alarm.copyWith(enabled: value),
+                          );
+                          setState(() {});
+                        },
+                      ),
+                      if (settings.alarm.enabled) ...<Widget>[
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Use custom Adhan sound'),
+                          subtitle: const Text('Toggle between default sound and custom Adhan sound'),
+                          value: settings.alarm.useCustomSound,
+                          onChanged: (bool value) async {
+                            await widget.prayerTimesController.updateAlarmSettings(
+                              settings.alarm.copyWith(useCustomSound: value),
+                            );
+                            setState(() {});
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        FilledButton.icon(
+                          onPressed: () async {
+                            await PrayerAlarmService.instance.ensurePermissions();
+                            await PrayerAlarmService.instance.scheduleTestAlarm();
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Test alarm scheduled for 10 seconds from now')),
+                            );
+                          },
+                          icon: const Icon(Icons.alarm_rounded),
+                          label: const Text('Test full-screen alarm'),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _SettingsCard(
                   title: 'Prayer calculation',
                   description:
                       'Calculation methods differ by region and scholarly convention.',
@@ -186,7 +240,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       DropdownButtonFormField<PrayerCalculationMethod>(
-                        value: settings.method,
+                        initialValue: settings.method,
                         isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Calculation method',

@@ -121,6 +121,7 @@ class _MainShellState extends State<MainShell>
     }
     widget.prayerController.refreshToday();
     widget.prayerTimesController.refreshForToday();
+    unawaited(widget.prayerTimesController.rescheduleAlarms());
     setState(() {});
   }
 
