@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../controllers/auth_controller.dart';
@@ -46,19 +48,22 @@ class ProfileView extends StatelessWidget {
         final String locationLabel =
             prayerTimesController.location?.label ?? 'No prayer location saved';
 
-        return CustomScrollView(
-          key: const ValueKey<String>('profile-view'),
-          slivers: <Widget>[
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
-              sliver: SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 680),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
+        return Stack(
+          children: <Widget>[
+            const Positioned.fill(child: _ProfileAmbientBackground()),
+            CustomScrollView(
+              key: const ValueKey<String>('profile-view'),
+              slivers: <Widget>[
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
+                  sliver: SliverToBoxAdapter(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 680),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
                           'PROFILE',
                           style: textTheme.labelSmall?.copyWith(
                             color: palette.inkMuted,
@@ -75,17 +80,31 @@ class ProfileView extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        _ProfileHero(
-                          user: user,
-                          locationLabel: locationLabel,
-                          totalSuccessfulDays: summary.totalSuccessfulDays,
-                          onEdit:
-                              user == null
-                                  ? null
-                                  : () => EditProfileSheet.show(
-                                    context,
-                                    authController,
-                                  ),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0, end: 1),
+                          duration: const Duration(milliseconds: 680),
+                          curve: Curves.easeOutCubic,
+                          builder: (BuildContext context, double value, Widget? child) {
+                            return Opacity(
+                              opacity: value,
+                              child: Transform.translate(
+                                offset: Offset(0, (1 - value) * 16),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: _ProfileHero(
+                            user: user,
+                            locationLabel: locationLabel,
+                            totalSuccessfulDays: summary.totalSuccessfulDays,
+                            onEdit:
+                                user == null
+                                    ? null
+                                    : () => EditProfileSheet.show(
+                                      context,
+                                      authController,
+                                    ),
+                          ),
                         ),
                         const SizedBox(height: 14),
                         Row(
@@ -205,11 +224,82 @@ class ProfileView extends StatelessWidget {
                     ),
                   ),
                 ),
-              ),
-            ),
-          ],
+                  ),
+                )
+              ]
+            )
+          ]
         );
       },
+    );
+  }
+}
+
+class _ProfileAmbientBackground extends StatefulWidget {
+  const _ProfileAmbientBackground();
+
+  @override
+  State<_ProfileAmbientBackground> createState() =>
+      _ProfileAmbientBackgroundState();
+}
+
+class _ProfileAmbientBackgroundState extends State<_ProfileAmbientBackground>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 40),
+    )..repeat();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.of(context).disableAnimations) {
+      _controller
+        ..stop()
+        ..value = 0.22;
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette palette = context.palette;
+    return IgnorePointer(
+      child: ExcludeSemantics(
+        child: RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (BuildContext context, Widget? child) {
+              final double p = _controller.value * 6.283;
+              return DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment(-0.6 + 0.3 * math.sin(p), -1),
+                    end: const Alignment(0.4, 1),
+                    colors: <Color>[
+                      palette.canvas,
+                      Color.lerp(palette.canvas, palette.surfaceMuted, 0.65)!,
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 }

@@ -205,9 +205,13 @@ class _MainShellState extends State<MainShell>
                     ),
                   ),
                 ),
-                bottomNavigationBar: AppBottomNavigation(
-                  selectedIndex: index,
-                  onSelected: _selectDestination,
+                bottomNavigationBar: AnimatedContainer(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  child: AppBottomNavigation(
+                    selectedIndex: index,
+                    onSelected: _selectDestination,
+                  ),
                 ),
               ),
               if (celebration != null)

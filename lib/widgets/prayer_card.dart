@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/prayer.dart';
 import '../theme/app_motion.dart';
@@ -245,7 +246,10 @@ class _PrayerCardState extends State<PrayerCard>
                 child: GestureDetector(
                   key: ValueKey<String>('prayer-toggle-${widget.prayer.name}'),
                   behavior: HitTestBehavior.opaque,
-                  onTap: widget.onToggle,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    widget.onToggle();
+                  },
                   child: SizedBox(
                     width: 48,
                     height: 48,

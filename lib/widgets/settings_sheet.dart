@@ -240,7 +240,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       DropdownButtonFormField<PrayerCalculationMethod>(
-                        initialValue: settings.method,
+                        value: settings.method,
                         isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Calculation method',

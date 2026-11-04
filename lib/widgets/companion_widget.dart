@@ -14,10 +14,12 @@ class CompanionWidget extends StatefulWidget {
     super.key,
     required this.summary,
     this.onOpenCalendar,
+    this.onTap,
   });
 
   final StreakSummary summary;
   final VoidCallback? onOpenCalendar;
+  final VoidCallback? onTap;
 
   @override
   State<CompanionWidget> createState() => _CompanionWidgetState();
@@ -177,113 +179,117 @@ class _CompanionWidgetState extends State<CompanionWidget>
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            AnimatedBuilder(
-              animation: _animation,
-              builder: (BuildContext context, Widget? child) {
-                final bool animate = _animationsEnabled;
-                final double idle = animate ? _idleController.value : 0;
-                final double breathe =
-                    animate ? math.sin(idle * math.pi * 2) : 0;
-                final double blink = animate ? _blinkAt(idle) : 0;
-                final double gaze =
-                    animate ? math.sin(idle * math.pi * 2 + 1.2) * 0.75 : 0;
-                final double flutter =
-                    animate
-                        ? math.max(
-                          _pulse(idle, 0.18, 0.235),
-                          _pulse(idle, 0.7, 0.755),
-                        )
-                        : 0;
-                final double reaction =
-                    animate ? math.sin(_reactionController.value * math.pi) : 0;
-                final double celebration =
-                    animate ? _celebrationController.value : 0;
-                final bool isCelebrating = celebration > 0 && celebration < 1;
-                final double celebrationPulse =
-                    isCelebrating ? math.sin(celebration * math.pi) : 0;
-                final double celebrationFlutter =
-                    isCelebrating
-                        ? math.sin(celebration * math.pi * 6) *
-                            (1 - celebration)
-                        : 0;
-                final double lift = reaction * 3 + celebrationPulse * 6;
-                final double rotation =
-                    math.sin(idle * math.pi * 2 - 0.7) * 0.012 +
-                    reaction * 0.025 +
-                    celebrationFlutter * 0.018;
-                final double wingAngle =
-                    _wingBaseFor(mood) +
-                    math.sin(idle * math.pi * 2 + 0.4) * 0.035 +
-                    flutter * 0.12 +
-                    reaction * 0.14 +
-                    celebrationFlutter * 0.24;
-                final double starPulse =
-                    animate ? math.sin(idle * math.pi * 2 - 1.1) : 0;
-                final double sparkle =
-                    animate
-                        ? 0.5 + 0.5 * math.sin(idle * math.pi * 4 + 0.4)
-                        : 0;
+            GestureDetector(
+              onTap: widget.onTap,
+              behavior: HitTestBehavior.opaque,
+              child: AnimatedBuilder(
+                animation: _animation,
+                builder: (BuildContext context, Widget? child) {
+                  final bool animate = _animationsEnabled;
+                  final double idle = animate ? _idleController.value : 0;
+                  final double breathe =
+                      animate ? math.sin(idle * math.pi * 2) : 0;
+                  final double blink = animate ? _blinkAt(idle) : 0;
+                  final double gaze =
+                      animate ? math.sin(idle * math.pi * 2 + 1.2) * 0.75 : 0;
+                  final double flutter =
+                      animate
+                          ? math.max(
+                            _pulse(idle, 0.18, 0.235),
+                            _pulse(idle, 0.7, 0.755),
+                          )
+                          : 0;
+                  final double reaction =
+                      animate ? math.sin(_reactionController.value * math.pi) : 0;
+                  final double celebration =
+                      animate ? _celebrationController.value : 0;
+                  final bool isCelebrating = celebration > 0 && celebration < 1;
+                  final double celebrationPulse =
+                      isCelebrating ? math.sin(celebration * math.pi) : 0;
+                  final double celebrationFlutter =
+                      isCelebrating
+                          ? math.sin(celebration * math.pi * 6) *
+                              (1 - celebration)
+                          : 0;
+                  final double lift = reaction * 3 + celebrationPulse * 6;
+                  final double rotation =
+                      math.sin(idle * math.pi * 2 - 0.7) * 0.012 +
+                      reaction * 0.025 +
+                      celebrationFlutter * 0.018;
+                  final double wingAngle =
+                      _wingBaseFor(mood) +
+                      math.sin(idle * math.pi * 2 + 0.4) * 0.035 +
+                      flutter * 0.12 +
+                      reaction * 0.14 +
+                      celebrationFlutter * 0.24;
+                  final double starPulse =
+                      animate ? math.sin(idle * math.pi * 2 - 1.1) : 0;
+                  final double sparkle =
+                      animate
+                          ? 0.5 + 0.5 * math.sin(idle * math.pi * 4 + 0.4)
+                          : 0;
 
-                return Transform.translate(
-                  key: const ValueKey<String>('companion-motion'),
-                  offset: Offset(0, breathe * 2.2 - lift),
-                  child: Transform.rotate(
-                    angle: rotation,
-                    child: Transform.scale(
-                      scale: 1 + celebrationPulse * 0.055 + reaction * 0.012,
-                      child: RepaintBoundary(
-                        child: SizedBox.square(
-                          dimension: 98,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            clipBehavior: Clip.none,
-                            children: <Widget>[
-                              SizedBox.square(
-                                dimension: 88,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: palette.surfaceMuted,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                              Transform.scale(
-                                scale: 1 + breathe * 0.012,
-                                alignment: Alignment.bottomCenter,
-                                child: CustomPaint(
-                                  size: const Size.square(88),
-                                  painter: _OwlPainter(
-                                    mood: mood,
-                                    blink: blink,
-                                    gaze: gaze,
-                                    wingAngle: wingAngle,
-                                    starPulse: starPulse,
-                                    sparkle: sparkle,
-                                    body: palette.ink,
-                                    face: palette.surface,
-                                    muted: palette.inkMuted,
-                                  ),
-                                ),
-                              ),
-                              if (isCelebrating)
-                                Positioned.fill(
-                                  child: CustomPaint(
-                                    painter: _CelebrationPainter(
-                                      progress: celebration,
-                                      primary: palette.ink,
-                                      secondary: palette.inkMuted,
+                  return Transform.translate(
+                    key: const ValueKey<String>('companion-motion'),
+                    offset: Offset(0, breathe * 2.2 - lift),
+                    child: Transform.rotate(
+                      angle: rotation,
+                      child: Transform.scale(
+                        scale: 1 + celebrationPulse * 0.055 + reaction * 0.012,
+                        child: RepaintBoundary(
+                          child: SizedBox.square(
+                            dimension: 98,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              clipBehavior: Clip.none,
+                              children: <Widget>[
+                                SizedBox.square(
+                                  dimension: 88,
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      color: palette.surfaceMuted,
+                                      shape: BoxShape.circle,
                                     ),
                                   ),
                                 ),
-                            ],
+                                Transform.scale(
+                                  scale: 1 + breathe * 0.012,
+                                  alignment: Alignment.bottomCenter,
+                                  child: CustomPaint(
+                                    size: const Size.square(88),
+                                    painter: _OwlPainter(
+                                      mood: mood,
+                                      blink: blink,
+                                      gaze: gaze,
+                                      wingAngle: wingAngle,
+                                      starPulse: starPulse,
+                                      sparkle: sparkle,
+                                      body: palette.ink,
+                                      face: palette.surface,
+                                      muted: palette.inkMuted,
+                                    ),
+                                  ),
+                                ),
+                                if (isCelebrating)
+                                  Positioned.fill(
+                                    child: CustomPaint(
+                                      painter: _CelebrationPainter(
+                                        progress: celebration,
+                                        primary: palette.ink,
+                                        secondary: palette.inkMuted,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
                 );
               },
             ),
+          ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(

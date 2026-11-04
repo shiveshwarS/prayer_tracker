@@ -103,15 +103,18 @@ class _CompassViewState extends State<CompassView> with WidgetsBindingObserver {
         final CompassController compass = widget.compassController;
         final SavedLocation? location = prayerTimes.location;
 
-        return CustomScrollView(
-          key: const ValueKey<String>('compass-view'),
-          slivers: <Widget>[
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
-              sliver: SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 680),
+        return Stack(
+          children: <Widget>[
+            const Positioned.fill(child: _CompassAmbientBackground()),
+            CustomScrollView(
+              key: const ValueKey<String>('compass-view'),
+              slivers: <Widget>[
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
+                  sliver: SliverToBoxAdapter(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 680),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
@@ -198,15 +201,86 @@ class _CompassViewState extends State<CompassView> with WidgetsBindingObserver {
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+                      ]
+                    )
+                      )
+                    )
+                  )
+                )
+              ]
+            )
+          ]
         );
       },
+    );
+  }
+}
+
+class _CompassAmbientBackground extends StatefulWidget {
+  const _CompassAmbientBackground();
+
+  @override
+  State<_CompassAmbientBackground> createState() =>
+      _CompassAmbientBackgroundState();
+}
+
+class _CompassAmbientBackgroundState extends State<_CompassAmbientBackground>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 36),
+    )..repeat();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.of(context).disableAnimations) {
+      _controller
+        ..stop()
+        ..value = 0.25;
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette palette = context.palette;
+    return IgnorePointer(
+      child: ExcludeSemantics(
+        child: RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (BuildContext context, Widget? child) {
+              final double p = _controller.value * math.pi * 2;
+              return DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment(0.4 * math.sin(p), -0.8),
+                    radius: 1.4,
+                    colors: <Color>[
+                      palette.surface,
+                      Color.lerp(palette.canvas, palette.surfaceMuted, 0.8)!,
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 }

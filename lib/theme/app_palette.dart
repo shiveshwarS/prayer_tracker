@@ -1,33 +1,39 @@
-import 'package:flutter/material.dart';
+  import 'package:flutter/material.dart';
 
-@immutable
-class AppPalette extends ThemeExtension<AppPalette> {
-  const AppPalette({
-    required this.canvas,
-    required this.surface,
-    required this.surfaceMuted,
-    required this.ink,
-    required this.inkMuted,
-    required this.line,
-    required this.inverse,
-    required this.inverseInk,
-    required this.inverseMuted,
-    required this.error,
-    required this.shadow,
-    required this.contributionLevels,
-  });
+  @immutable
+  class AppPalette extends ThemeExtension<AppPalette> {
+    const AppPalette({
+      required this.canvas,
+      required this.surface,
+      required this.surfaceMuted,
+      required this.ink,
+      required this.inkMuted,
+      required this.line,
+      required this.inverse,
+      required this.inverseInk,
+      required this.inverseMuted,
+      required this.error,
+      required this.shadow,
+      required this.contributionLevels,
+      this.haloCool = const Color(0xFFB9D7FF),
+      this.haloWarm = const Color(0xFFFFE5B8),
+      this.gold = const Color(0xFFF2C94C),
+    });
 
-  final Color canvas;
-  final Color surface;
-  final Color surfaceMuted;
-  final Color ink;
-  final Color inkMuted;
-  final Color line;
-  final Color inverse;
-  final Color inverseInk;
-  final Color inverseMuted;
-  final Color error;
-  final Color shadow;
+    final Color canvas;
+    final Color surface;
+    final Color surfaceMuted;
+    final Color ink;
+    final Color inkMuted;
+    final Color line;
+    final Color inverse;
+    final Color inverseInk;
+    final Color inverseMuted;
+    final Color error;
+    final Color shadow;
+    final Color haloCool;
+    final Color haloWarm;
+    final Color gold;
 
   /// Six levels, from zero completed prayers to all five.
   final List<Color> contributionLevels;
@@ -107,6 +113,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
       error: error ?? this.error,
       shadow: shadow ?? this.shadow,
       contributionLevels: contributionLevels ?? this.contributionLevels,
+      haloCool: haloCool,
+      haloWarm: haloWarm,
+      gold: gold,
     );
   }
 
@@ -136,6 +145,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
               t,
             )!,
       ),
+      haloCool: Color.lerp(haloCool, other.haloCool, t)!,
+      haloWarm: Color.lerp(haloWarm, other.haloWarm, t)!,
+      gold: Color.lerp(gold, other.gold, t)!,
     );
   }
 }

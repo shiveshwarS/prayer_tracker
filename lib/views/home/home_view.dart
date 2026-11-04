@@ -18,7 +18,7 @@ import '../../widgets/prayer_card.dart';
 import '../../widgets/progress_card.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/stat_card.dart';
-
+import 'dart:math';
 class HomeView extends StatefulWidget {
   const HomeView({
     super.key,
@@ -147,15 +147,18 @@ class _HomeViewState extends State<HomeView>
           }
         }
 
-        return CustomScrollView(
-          key: const ValueKey<String>('home-view'),
-          slivers: <Widget>[
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
-              sliver: SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 680),
+        return Stack(
+          children: <Widget>[
+            const Positioned.fill(child: _HomeAmbientBackground()),
+            CustomScrollView(
+              key: const ValueKey<String>('home-view'),
+              slivers: <Widget>[
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
+                  sliver: SliverToBoxAdapter(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 680),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
@@ -251,15 +254,18 @@ class _HomeViewState extends State<HomeView>
                         ],
                         ...prayerCards,
                         const SizedBox(height: 24),
-                        MotionReveal(
-                          animation: _entranceController,
-                          start: 0.55,
-                          end: 0.95,
-                          child: CompanionWidget(
-                            summary: widget.prayerController.summary,
-                            onOpenCalendar: widget.onOpenHistory,
-                          ),
-                        ),
+                            MotionReveal(
+                              animation: _entranceController,
+                              start: 0.55,
+                              end: 0.95,
+                              child: CompanionWidget(
+                                summary: widget.prayerController.summary,
+                                onOpenCalendar: widget.onOpenHistory,
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                },
+                              ),
+                            ),
                         const SizedBox(height: 14),
                         MotionReveal(
                           animation: _entranceController,
@@ -291,22 +297,157 @@ class _HomeViewState extends State<HomeView>
                                           ? 'complete day to beat'
                                           : 'complete days to beat',
                                   icon: Icons.emoji_events_outlined,
-                                ),
-                              ),
-                            ],
-                          ),
+                                )
+                              )
+                            ])
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
+                          ]
+                        )
+                      )
+                    )
+                  )
+                )
+              ]
+            )
+          ]
+ );
       },
     );
   }
+}
+
+class _HomeAmbientBackground extends StatefulWidget {
+  const _HomeAmbientBackground();
+
+  @override
+  State<_HomeAmbientBackground> createState() => _HomeAmbientBackgroundState();
+}
+
+class _HomeAmbientBackgroundState extends State<_HomeAmbientBackground>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 38),
+    )..repeat();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.of(context).disableAnimations) {
+      _controller.stop();
+      _controller.value = 0.2;
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette palette = context.palette;
+    return IgnorePointer(
+      child: ExcludeSemantics(
+        child: RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (BuildContext context, Widget? child) {
+              final double t = _controller.value;
+              return DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment(
+                      -0.8 + 0.4 * sin(t * pi * 2),
+                      -1.0 + 0.2 * cos(t * pi * 2),
+                    ),
+                    end: const Alignment(0.6, 1.0),
+                    colors: <Color>[
+                      palette.canvas,
+                      Color.lerp(palette.canvas, palette.surfaceMuted, 0.6)!,
+                    ],
+                  ),
+                ),
+                child: CustomPaint(
+                  painter: _HomeGlowPainter(t: t),
+                  size: Size.infinite,
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeGlowPainter extends CustomPainter {
+  _HomeGlowPainter({required this.t});
+
+  final double t;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()..style = PaintingStyle.fill;
+    final double p = t * 
+    pi * 2;
+    _drawOrb(
+      canvas,
+      size,
+      paint,
+      Offset(size.width * 0.16, size.height * 0.12),
+      size.shortestSide * 0.42,
+      0.05,
+      p,
+    );
+    _drawOrb(
+      canvas,
+      size,
+      paint,
+      Offset(size.width * 0.86, size.height * 0.24),
+      size.shortestSide * 0.36,
+      0.04,
+      p + 1.2,
+    );
+  }
+
+  void _drawOrb(
+    Canvas canvas,
+    Size size,
+    Paint paint,
+    Offset base,
+    double radius,
+    double opacity,
+    double phase,
+  ) {
+    final Offset center = base.translate(
+      sin(phase) * 14,
+      cos(phase * 0.8) * 10,
+    );
+    final Rect rect = Rect.fromCircle(center: center, radius: radius);
+    paint.shader = RadialGradient(
+      colors: <Color>[
+        Colors.white.withValues(alpha: opacity),
+        Colors.white.withValues(alpha: opacity * 0.25),
+        Colors.white.withValues(alpha: 0),
+      ],
+      stops: const <double>[0, 0.6, 1],
+    ).createShader(rect);
+    canvas.drawCircle(center, radius, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _HomeGlowPainter oldDelegate) =>
+      oldDelegate.t != t;
 }
 
 class _ProfileButton extends StatelessWidget {
@@ -414,11 +555,11 @@ class _LocationPrompt extends StatelessWidget {
                     ],
                   ),
                 ),
-              ],
+              ]
+            )
             ),
-          ),
-        ],
-      ),
+          ],
+        )
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_motion.dart';
 import '../theme/app_palette.dart';
@@ -197,7 +198,10 @@ class ProgressCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   TextButton.icon(
-                    onPressed: onViewHistory,
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      onViewHistory();
+                    },
                     style: TextButton.styleFrom(
                       foregroundColor: palette.inverseInk,
                       padding: const EdgeInsets.symmetric(
