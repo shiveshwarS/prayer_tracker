@@ -9,7 +9,9 @@ import '../../models/saved_location.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_palette.dart';
 import '../../utils/date_utils.dart';
+import '../../widgets/living_background.dart';
 import '../../widgets/location_sheet.dart';
+import '../../widgets/sparkle_burst.dart';
 
 class CompassView extends StatefulWidget {
   const CompassView({
@@ -27,7 +29,9 @@ class CompassView extends StatefulWidget {
   State<CompassView> createState() => _CompassViewState();
 }
 
-class _CompassViewState extends State<CompassView> with WidgetsBindingObserver {
+class _CompassViewState extends State<CompassView>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+  late final AnimationController _alignmentController;
   bool _appActive = true;
   late bool _wasAligned;
 
@@ -35,6 +39,10 @@ class _CompassViewState extends State<CompassView> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _alignmentController = AnimationController(
+      vsync: this,
+      duration: AppMotion.hero,
+    );
     _wasAligned = widget.compassController.isAligned;
     widget.compassController.addListener(_handleAlignment);
     widget.prayerTimesController.addListener(_syncActive);
@@ -60,6 +68,9 @@ class _CompassViewState extends State<CompassView> with WidgetsBindingObserver {
     final bool aligned = widget.compassController.isAligned;
     if (aligned && !_wasAligned && widget.isActive && _appActive) {
       HapticFeedback.mediumImpact();
+      if (mounted && AppMotion.enabled(context)) {
+        _alignmentController.forward(from: 0);
+      }
     }
     _wasAligned = aligned;
   }
@@ -85,6 +96,7 @@ class _CompassViewState extends State<CompassView> with WidgetsBindingObserver {
     widget.compassController.removeListener(_handleAlignment);
     widget.prayerTimesController.removeListener(_syncActive);
     widget.compassController.setActive(false);
+    _alignmentController.dispose();
     super.dispose();
   }
 
@@ -105,7 +117,9 @@ class _CompassViewState extends State<CompassView> with WidgetsBindingObserver {
 
         return Stack(
           children: <Widget>[
-            const Positioned.fill(child: _CompassAmbientBackground()),
+            const Positioned.fill(
+              child: LivingBackground(intensity: 0.85, showMotifs: false),
+            ),
             CustomScrollView(
               key: const ValueKey<String>('compass-view'),
               slivers: <Widget>[
@@ -164,6 +178,7 @@ class _CompassViewState extends State<CompassView> with WidgetsBindingObserver {
                           _CompassCard(
                             compass: compass,
                             qiblaBearing: compass.qiblaBearing!,
+                            alignmentAnimation: _alignmentController,
                           ),
                         if (location != null) ...<Widget>[
                           const SizedBox(height: 14),
@@ -212,75 +227,6 @@ class _CompassViewState extends State<CompassView> with WidgetsBindingObserver {
           ]
         );
       },
-    );
-  }
-}
-
-class _CompassAmbientBackground extends StatefulWidget {
-  const _CompassAmbientBackground();
-
-  @override
-  State<_CompassAmbientBackground> createState() =>
-      _CompassAmbientBackgroundState();
-}
-
-class _CompassAmbientBackgroundState extends State<_CompassAmbientBackground>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 36),
-    )..repeat();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (MediaQuery.of(context).disableAnimations) {
-      _controller
-        ..stop()
-        ..value = 0.25;
-    } else if (!_controller.isAnimating) {
-      _controller.repeat();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final AppPalette palette = context.palette;
-    return IgnorePointer(
-      child: ExcludeSemantics(
-        child: RepaintBoundary(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (BuildContext context, Widget? child) {
-              final double p = _controller.value * math.pi * 2;
-              return DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment(0.4 * math.sin(p), -0.8),
-                    radius: 1.4,
-                    colors: <Color>[
-                      palette.surface,
-                      Color.lerp(palette.canvas, palette.surfaceMuted, 0.8)!,
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
     );
   }
 }
@@ -429,10 +375,15 @@ class _QiblaLocationGate extends StatelessWidget {
 }
 
 class _CompassCard extends StatelessWidget {
-  const _CompassCard({required this.compass, required this.qiblaBearing});
+  const _CompassCard({
+    required this.compass,
+    required this.qiblaBearing,
+    required this.alignmentAnimation,
+  });
 
   final CompassController compass;
   final double qiblaBearing;
+  final Animation<double> alignmentAnimation;
 
   @override
   Widget build(BuildContext context) {
@@ -447,7 +398,15 @@ class _CompassCard extends StatelessWidget {
       const Duration(milliseconds: 240),
     );
 
-    return AnimatedContainer(
+    return AnimatedBuilder(
+      animation: alignmentAnimation,
+      builder: (BuildContext context, Widget? child) {
+        final double alignmentValue = alignmentAnimation.value;
+        final double alignmentPulse =
+            isAligned && alignmentValue > 0 && alignmentValue < 1
+                ? math.sin(alignmentValue * math.pi)
+                : 0;
+        return AnimatedContainer(
       duration: motion,
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
@@ -593,6 +552,8 @@ class _CompassCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+      },
     );
   }
 }

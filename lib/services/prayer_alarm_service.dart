@@ -43,6 +43,9 @@ class PrayerAlarmService {
     required PrayerTimesForDay? times,
     required PrayerAlarmConfig alarmConfig,
   }) async {
+    if (!_initialized) {
+      return;
+    }
     await Alarm.stopAll();
     if (!alarmConfig.enabled || times == null) {
       return;
@@ -87,6 +90,9 @@ class PrayerAlarmService {
   }
 
   Future<void> cancelAll() async {
+    if (!_initialized) {
+      return;
+    }
     await Alarm.stopAll();
   }
 

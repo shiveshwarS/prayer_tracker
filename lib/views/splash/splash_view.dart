@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 
 import '../../theme/app_palette.dart';
 import '../../theme/app_text_styles.dart';
+import '../../theme/lottie_assets.dart';
 import '../../widgets/app_logo.dart';
 import '../../widgets/geometric_pattern.dart';
+import '../../widgets/noor_lottie.dart';
 
 class SplashView extends StatelessWidget {
   const SplashView({super.key});
@@ -76,13 +79,14 @@ class SplashView extends StatelessWidget {
                     ),
                   ),
                   const Spacer(flex: 5),
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 1.6,
-                      color: palette.inkMuted,
-                    ),
+                  NoorLottie(
+                    asset: LottieAssets.splashOrbit,
+                    width: 34,
+                    height: 34,
+                    color: palette.inkMuted,
+                    repeat: true,
+                    renderCache: RenderCache.drawingCommands,
+                    fallback: _StaticOrbitMark(color: palette.inkMuted),
                   ),
                   const SizedBox(height: 24),
                   Text(
@@ -97,6 +101,43 @@ class SplashView extends StatelessWidget {
                   const SizedBox(height: 18),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StaticOrbitMark extends StatelessWidget {
+  const _StaticOrbitMark({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: 34,
+      child: Stack(
+        alignment: Alignment.center,
+        children: <Widget>[
+          Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: color.withValues(alpha: 0.35),
+                width: 1.2,
+              ),
+            ),
+          ),
+          Container(
+            width: 3,
+            height: 3,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.65),
             ),
           ),
         ],

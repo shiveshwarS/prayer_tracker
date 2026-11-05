@@ -10,7 +10,9 @@ import '../../models/prayer_times.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_palette.dart';
 import '../../utils/date_utils.dart';
+import '../../utils/day_phase.dart';
 import '../../widgets/companion_widget.dart';
+import '../../widgets/living_background.dart';
 import '../../widgets/location_sheet.dart';
 import '../../widgets/motion_reveal.dart';
 import '../../widgets/next_prayer_card.dart';
@@ -18,7 +20,7 @@ import '../../widgets/prayer_card.dart';
 import '../../widgets/progress_card.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/stat_card.dart';
-import 'dart:math';
+
 class HomeView extends StatefulWidget {
   const HomeView({
     super.key,
@@ -42,6 +44,7 @@ class HomeView extends StatefulWidget {
 class _HomeViewState extends State<HomeView>
     with SingleTickerProviderStateMixin {
   late final AnimationController _entranceController;
+  late final ScrollController _scrollController;
 
   @override
   void initState() {
@@ -50,6 +53,7 @@ class _HomeViewState extends State<HomeView>
       vsync: this,
       duration: AppMotion.entrance,
     )..forward();
+    _scrollController = ScrollController();
   }
 
   @override
@@ -63,6 +67,7 @@ class _HomeViewState extends State<HomeView>
   @override
   void dispose() {
     _entranceController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -99,11 +104,31 @@ class _HomeViewState extends State<HomeView>
             widget.authController.user?.firstName ?? 'friend';
         final NextPrayerInfo? nextPrayer =
             widget.prayerTimesController.nextPrayer;
+        final PrayerTimesForDay? prayerTimes =
+            widget.prayerTimesController.times;
+        final DayPhase dayPhase = dayPhaseFor(
+          now: DateTime.now(),
+          times: prayerTimes,
+        );
+        DateTime? previousPrayerTime;
+        if (nextPrayer != null && prayerTimes != null) {
+          if (nextPrayer.isTomorrow) {
+            previousPrayerTime = prayerTimes.timeFor(PrayerId.isha);
+          } else {
+            final int nextIndex = PrayerId.values.indexOf(nextPrayer.prayer);
+            if (nextIndex > 0) {
+              previousPrayerTime = prayerTimes.timeFor(
+                PrayerId.values[nextIndex - 1],
+              );
+            }
+          }
+        }
 
         final Widget nextSection;
         if (nextPrayer != null) {
           nextSection = NextPrayerCard(
             nextPrayer: nextPrayer,
+            previousTime: previousPrayerTime,
             locationLabel:
                 widget.prayerTimesController.location?.label ??
                 'Saved location',
@@ -138,6 +163,10 @@ class _HomeViewState extends State<HomeView>
                 prayer: prayer,
                 time: widget.prayerTimesController.timeFor(prayer),
                 completed: widget.prayerController.isCompleted(prayer),
+                isNext:
+                    nextPrayer != null &&
+                    !nextPrayer.isTomorrow &&
+                    nextPrayer.prayer == prayer,
                 onToggle: () => _togglePrayer(prayer),
               ),
             ),
@@ -149,9 +178,16 @@ class _HomeViewState extends State<HomeView>
 
         return Stack(
           children: <Widget>[
-            const Positioned.fill(child: _HomeAmbientBackground()),
+            Positioned.fill(
+              child: LivingBackground(
+                scrollController: _scrollController,
+                intensity: 1.2,
+              ),
+            ),
+            Positioned.fill(child: _SkyWash(phase: dayPhase)),
             CustomScrollView(
               key: const ValueKey<String>('home-view'),
+              controller: _scrollController,
               slivers: <Widget>[
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
@@ -217,20 +253,21 @@ class _HomeViewState extends State<HomeView>
                         MotionReveal(
                           animation: _entranceController,
                           start: 0.05,
-                          end: 0.45,
+                          end: 0.48,
+                          offset: 16,
+                          child: nextSection,
+                        ),
+                        const SizedBox(height: 14),
+                        MotionReveal(
+                          animation: _entranceController,
+                          start: 0.14,
+                          end: 0.58,
                           offset: 14,
                           child: ProgressCard(
                             completed: widget.prayerController.todayCompleted,
                             total: PrayerId.values.length,
                             onViewHistory: widget.onOpenHistory,
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        MotionReveal(
-                          animation: _entranceController,
-                          start: 0.12,
-                          end: 0.55,
-                          child: nextSection,
                         ),
                         const SizedBox(height: 28),
                         MotionReveal(
@@ -316,138 +353,39 @@ class _HomeViewState extends State<HomeView>
   }
 }
 
-class _HomeAmbientBackground extends StatefulWidget {
-  const _HomeAmbientBackground();
+class _SkyWash extends StatelessWidget {
+  const _SkyWash({required this.phase});
 
-  @override
-  State<_HomeAmbientBackground> createState() => _HomeAmbientBackgroundState();
-}
-
-class _HomeAmbientBackgroundState extends State<_HomeAmbientBackground>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 38),
-    )..repeat();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (MediaQuery.of(context).disableAnimations) {
-      _controller.stop();
-      _controller.value = 0.2;
-    } else if (!_controller.isAnimating) {
-      _controller.repeat();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  final DayPhase phase;
 
   @override
   Widget build(BuildContext context) {
     final AppPalette palette = context.palette;
+    final Color accent = phase.accent(palette);
+    final Color secondary = phase.secondary(palette);
     return IgnorePointer(
       child: ExcludeSemantics(
-        child: RepaintBoundary(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (BuildContext context, Widget? child) {
-              final double t = _controller.value;
-              return DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment(
-                      -0.8 + 0.4 * sin(t * pi * 2),
-                      -1.0 + 0.2 * cos(t * pi * 2),
-                    ),
-                    end: const Alignment(0.6, 1.0),
-                    colors: <Color>[
-                      palette.canvas,
-                      Color.lerp(palette.canvas, palette.surfaceMuted, 0.6)!,
-                    ],
-                  ),
-                ),
-                child: CustomPaint(
-                  painter: _HomeGlowPainter(t: t),
-                  size: Size.infinite,
-                ),
-              );
-            },
+        child: AnimatedContainer(
+          duration: AppMotion.enabled(context)
+              ? const Duration(milliseconds: 1400)
+              : Duration.zero,
+          curve: AppMotion.enter,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: const Alignment(0, 0.82),
+              colors: <Color>[
+                accent.withValues(alpha: 0.28),
+                secondary.withValues(alpha: 0.1),
+                palette.canvas.withValues(alpha: 0),
+              ],
+              stops: const <double>[0, 0.42, 1],
+            ),
           ),
         ),
       ),
     );
   }
-}
-
-class _HomeGlowPainter extends CustomPainter {
-  _HomeGlowPainter({required this.t});
-
-  final double t;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()..style = PaintingStyle.fill;
-    final double p = t * 
-    pi * 2;
-    _drawOrb(
-      canvas,
-      size,
-      paint,
-      Offset(size.width * 0.16, size.height * 0.12),
-      size.shortestSide * 0.42,
-      0.05,
-      p,
-    );
-    _drawOrb(
-      canvas,
-      size,
-      paint,
-      Offset(size.width * 0.86, size.height * 0.24),
-      size.shortestSide * 0.36,
-      0.04,
-      p + 1.2,
-    );
-  }
-
-  void _drawOrb(
-    Canvas canvas,
-    Size size,
-    Paint paint,
-    Offset base,
-    double radius,
-    double opacity,
-    double phase,
-  ) {
-    final Offset center = base.translate(
-      sin(phase) * 14,
-      cos(phase * 0.8) * 10,
-    );
-    final Rect rect = Rect.fromCircle(center: center, radius: radius);
-    paint.shader = RadialGradient(
-      colors: <Color>[
-        Colors.white.withValues(alpha: opacity),
-        Colors.white.withValues(alpha: opacity * 0.25),
-        Colors.white.withValues(alpha: 0),
-      ],
-      stops: const <double>[0, 0.6, 1],
-    ).createShader(rect);
-    canvas.drawCircle(center, radius, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _HomeGlowPainter oldDelegate) =>
-      oldDelegate.t != t;
 }
 
 class _ProfileButton extends StatelessWidget {

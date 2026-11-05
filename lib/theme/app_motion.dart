@@ -3,9 +3,11 @@
   abstract final class AppMotion {
     static const Duration quick = Duration(milliseconds: 180);
     static const Duration standard = Duration(milliseconds: 280);
+    static const Duration page = Duration(milliseconds: 360);
     static const Duration emphasized = Duration(milliseconds: 520);
+    static const Duration hero = Duration(milliseconds: 720);
     static const Duration entrance = Duration(milliseconds: 850);
-    static const Duration celebration = Duration(milliseconds: 1900);
+    static const Duration celebration = Duration(milliseconds: 2300);
     static const Duration ambient = Duration(seconds: 28);
 
     static const Curve enter = Curves.easeOutCubic;

@@ -6,7 +6,9 @@ import 'package:flutter/services.dart';
 import '../models/prayer.dart';
 import '../theme/app_motion.dart';
 import '../theme/app_palette.dart';
+import '../theme/lottie_assets.dart';
 import '../utils/date_utils.dart';
+import 'noor_lottie.dart';
 
 class PrayerCard extends StatefulWidget {
   const PrayerCard({
@@ -15,12 +17,14 @@ class PrayerCard extends StatefulWidget {
     required this.time,
     required this.completed,
     required this.onToggle,
+    this.isNext = false,
   });
 
   final PrayerId prayer;
   final DateTime? time;
   final bool completed;
   final VoidCallback onToggle;
+  final bool isNext;
 
   @override
   State<PrayerCard> createState() => _PrayerCardState();
@@ -96,8 +100,11 @@ class _PrayerCardState extends State<PrayerCard>
       const Duration(milliseconds: 180),
     );
     final bool completed = widget.completed;
+    final bool isNext = widget.isNext && !completed;
     final Color foreground = completed ? palette.inverseInk : palette.ink;
     final Color muted = completed ? palette.inverseMuted : palette.inkMuted;
+    final Color iconForeground =
+        completed || isNext ? palette.inverseInk : palette.ink;
     final String status = completed ? 'Completed' : 'Not completed';
     final String timeLabel =
         widget.time == null
@@ -113,15 +120,24 @@ class _PrayerCardState extends State<PrayerCard>
       child: AnimatedContainer(
         duration: motion,
         curve: AppMotion.enter,
+        clipBehavior: Clip.antiAlias,
         padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
         decoration: BoxDecoration(
           color: completed ? palette.inverse : palette.surface,
           borderRadius: BorderRadius.circular(21),
-          border: Border.all(color: completed ? palette.inverse : palette.line),
+          border: Border.all(
+            color:
+                completed
+                    ? palette.inverse
+                    : isNext
+                    ? palette.ink.withValues(alpha: 0.34)
+                    : palette.line,
+            width: isNext ? 1.4 : 1,
+          ),
           boxShadow: <BoxShadow>[
             BoxShadow(
               color: palette.shadow,
-              blurRadius: 18 + pulse * 10,
+              blurRadius: 18 + pulse * 10 + (isNext ? 8 : 0),
               offset: const Offset(0, 8),
             ),
             if (pulse > 0)
@@ -132,8 +148,22 @@ class _PrayerCardState extends State<PrayerCard>
               ),
           ],
         ),
-        child: Row(
+        child: Stack(
           children: <Widget>[
+            if (pulse > 0)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: _CompletionWashPainter(
+                      progress: progress,
+                      color:
+                          completed ? palette.inverseInk : palette.inkMuted,
+                    ),
+                  ),
+                ),
+              ),
+            Row(
+              children: <Widget>[
             AnimatedContainer(
               duration: motion,
               width: 46,
@@ -142,6 +172,8 @@ class _PrayerCardState extends State<PrayerCard>
                 color:
                     completed
                         ? palette.inverseInk.withValues(alpha: 0.12)
+                        : isNext
+                        ? palette.ink
                         : palette.surfaceMuted,
                 borderRadius: BorderRadius.circular(15),
               ),
@@ -151,7 +183,7 @@ class _PrayerCardState extends State<PrayerCard>
                   scale: 1 + pulse * 0.06,
                   child: Icon(
                     _iconFor(widget.prayer),
-                    color: foreground,
+                    color: iconForeground,
                     size: 21,
                   ),
                 ),
@@ -171,6 +203,17 @@ class _PrayerCardState extends State<PrayerCard>
                           fontWeight: FontWeight.w800,
                         ),
                       ),
+                      if (isNext) ...<Widget>[
+                        const SizedBox(width: 6),
+                        Container(
+                          width: 5,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: palette.gold,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ],
                       const SizedBox(width: 8),
                       Text(
                         widget.prayer.translation,
@@ -270,6 +313,14 @@ class _PrayerCardState extends State<PrayerCard>
                               ),
                             ),
                           ),
+                        if (pulse > 0 && completed && !_reduceMotion)
+                          NoorLottie(
+                            asset: LottieAssets.prayerCheck,
+                            width: 48,
+                            height: 48,
+                            controller: _successController,
+                            color: palette.inverse,
+                          ),
                         Transform.scale(
                           scale: 1 + pulse * 0.07,
                           child: AnimatedContainer(
@@ -319,6 +370,8 @@ class _PrayerCardState extends State<PrayerCard>
                 ),
               ),
             ),
+              ],
+            ),
           ],
         ),
       ),
@@ -338,6 +391,39 @@ class _PrayerCardState extends State<PrayerCard>
       case PrayerId.isha:
         return Icons.dark_mode_outlined;
     }
+  }
+}
+
+class _CompletionWashPainter extends CustomPainter {
+  const _CompletionWashPainter({required this.progress, required this.color});
+
+  final double progress;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0 || progress >= 1) {
+      return;
+    }
+    final Offset center = Offset(size.width - 28, size.height / 2);
+    final double radius = size.longestSide * (0.16 + progress * 1.05);
+    final Rect rect = Rect.fromCircle(center: center, radius: radius);
+    final Paint paint =
+        Paint()
+          ..shader = RadialGradient(
+            colors: <Color>[
+              color.withValues(alpha: (1 - progress) * 0.16),
+              color.withValues(alpha: (1 - progress) * 0.05),
+              color.withValues(alpha: 0),
+            ],
+            stops: const <double>[0, 0.55, 1],
+          ).createShader(rect);
+    canvas.drawCircle(center, radius, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CompletionWashPainter oldDelegate) {
+    return oldDelegate.progress != progress || oldDelegate.color != color;
   }
 }
 

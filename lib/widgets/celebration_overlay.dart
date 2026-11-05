@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import '../models/prayer_moment.dart';
 import '../theme/app_motion.dart';
 import '../theme/app_palette.dart';
+import '../theme/lottie_assets.dart';
 import '../utils/date_utils.dart';
 import 'celebration_burst.dart';
+import 'noor_lottie.dart';
 
 class CelebrationOverlay extends StatefulWidget {
   const CelebrationOverlay({
@@ -147,6 +149,14 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
                               primary: palette.ink,
                               secondary: palette.inkMuted,
                             ),
+                          ),
+                        ),
+                        Positioned.fill(
+                          child: NoorLottie(
+                            asset: LottieAssets.celebrationSparkle,
+                            controller: _controller,
+                            color: palette.ink,
+                            opacity: 0.55,
                           ),
                         ),
                         Semantics(

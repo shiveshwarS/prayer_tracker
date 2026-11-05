@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../controllers/auth_controller.dart';
@@ -7,16 +5,20 @@ import '../../controllers/prayer_controller.dart';
 import '../../controllers/prayer_times_controller.dart';
 import '../../controllers/theme_controller.dart';
 import '../../models/user_model.dart';
+import '../../theme/app_motion.dart';
 import '../../theme/app_palette.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/companion_widget.dart';
 import '../../widgets/edit_profile_sheet.dart';
+import '../../widgets/living_background.dart';
+import '../../widgets/motion_reveal.dart';
+import '../../widgets/prayer_heatmap.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/settings_sheet.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/streak_calendar.dart';
 
-class ProfileView extends StatelessWidget {
+class ProfileView extends StatefulWidget {
   const ProfileView({
     super.key,
     required this.authController,
@@ -33,7 +35,44 @@ class ProfileView extends StatelessWidget {
   final Future<void> Function() onResetData;
 
   @override
+  State<ProfileView> createState() => _ProfileViewState();
+}
+
+class _ProfileViewState extends State<ProfileView>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _entranceController;
+
+  @override
+  void initState() {
+    super.initState();
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: AppMotion.entrance,
+    )..forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.of(context).disableAnimations) {
+      _entranceController.value = 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final AuthController authController = widget.authController;
+    final PrayerController prayerController = widget.prayerController;
+    final PrayerTimesController prayerTimesController =
+        widget.prayerTimesController;
+    final ThemeController themeController = widget.themeController;
+    final Future<void> Function() onResetData = widget.onResetData;
     return AnimatedBuilder(
       animation: Listenable.merge(<Listenable>[
         authController,
@@ -50,7 +89,9 @@ class ProfileView extends StatelessWidget {
 
         return Stack(
           children: <Widget>[
-            const Positioned.fill(child: _ProfileAmbientBackground()),
+            const Positioned.fill(
+              child: LivingBackground(intensity: 0.9, showMotifs: false),
+            ),
             CustomScrollView(
               key: const ValueKey<String>('profile-view'),
               slivers: <Widget>[
@@ -80,19 +121,10 @@ class ProfileView extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        TweenAnimationBuilder<double>(
-                          tween: Tween<double>(begin: 0, end: 1),
-                          duration: const Duration(milliseconds: 680),
-                          curve: Curves.easeOutCubic,
-                          builder: (BuildContext context, double value, Widget? child) {
-                            return Opacity(
-                              opacity: value,
-                              child: Transform.translate(
-                                offset: Offset(0, (1 - value) * 16),
-                                child: child,
-                              ),
-                            );
-                          },
+                        MotionReveal(
+                          animation: _entranceController,
+                          end: 0.45,
+                          offset: 16,
                           child: _ProfileHero(
                             user: user,
                             locationLabel: locationLabel,
@@ -107,45 +139,79 @@ class ProfileView extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 14),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Expanded(
-                              child: StatCard(
-                                label: 'Current streak',
-                                value: '${summary.currentStreak}',
-                                caption:
-                                    summary.currentStreak == 1
-                                        ? 'complete day in a row'
-                                        : 'complete days in a row',
-                                icon: Icons.local_fire_department_outlined,
+                        MotionReveal(
+                          animation: _entranceController,
+                          start: 0.1,
+                          end: 0.52,
+                          offset: 12,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Expanded(
+                                child: StatCard(
+                                  label: 'Current streak',
+                                  value: '${summary.currentStreak}',
+                                  caption:
+                                      summary.currentStreak == 1
+                                          ? 'complete day in a row'
+                                          : 'complete days in a row',
+                                  icon: Icons.local_fire_department_outlined,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: StatCard(
-                                label: 'Longest streak',
-                                value: '${summary.longestStreak}',
-                                caption:
-                                    summary.longestStreak == 1
-                                        ? 'complete day to beat'
-                                        : 'complete days to beat',
-                                icon: Icons.emoji_events_outlined,
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: StatCard(
+                                  label: 'Longest streak',
+                                  value: '${summary.longestStreak}',
+                                  caption:
+                                      summary.longestStreak == 1
+                                          ? 'complete day to beat'
+                                          : 'complete days to beat',
+                                  icon: Icons.emoji_events_outlined,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 24),
-                        CompanionWidget(summary: summary),
-                        const SizedBox(height: 24),
-                        SectionHeader(
-                          eyebrow: 'HISTORY',
-                          title: 'Days of prayer',
+                        MotionReveal(
+                          animation: _entranceController,
+                          start: 0.18,
+                          end: 0.64,
+                          offset: 14,
+                          child: PrayerHeatmap(
+                            history: prayerController.history,
+                            today: prayerController.today,
+                          ),
                         ),
-                        const SizedBox(height: 12),
-                        StreakCalendar(
-                          history: prayerController.history,
-                          today: prayerController.today,
+                        const SizedBox(height: 24),
+                        MotionReveal(
+                          animation: _entranceController,
+                          start: 0.26,
+                          end: 0.72,
+                          offset: 12,
+                          child: CompanionWidget(summary: summary),
+                        ),
+                        const SizedBox(height: 24),
+                        MotionReveal(
+                          animation: _entranceController,
+                          start: 0.34,
+                          end: 0.82,
+                          offset: 12,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              SectionHeader(
+                                eyebrow: 'HISTORY',
+                                title: 'Days of prayer',
+                              ),
+                              const SizedBox(height: 12),
+                              StreakCalendar(
+                                history: prayerController.history,
+                                today: prayerController.today,
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 24),
                         SectionHeader(
@@ -231,75 +297,6 @@ class ProfileView extends StatelessWidget {
           ]
         );
       },
-    );
-  }
-}
-
-class _ProfileAmbientBackground extends StatefulWidget {
-  const _ProfileAmbientBackground();
-
-  @override
-  State<_ProfileAmbientBackground> createState() =>
-      _ProfileAmbientBackgroundState();
-}
-
-class _ProfileAmbientBackgroundState extends State<_ProfileAmbientBackground>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 40),
-    )..repeat();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (MediaQuery.of(context).disableAnimations) {
-      _controller
-        ..stop()
-        ..value = 0.22;
-    } else if (!_controller.isAnimating) {
-      _controller.repeat();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final AppPalette palette = context.palette;
-    return IgnorePointer(
-      child: ExcludeSemantics(
-        child: RepaintBoundary(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (BuildContext context, Widget? child) {
-              final double p = _controller.value * 6.283;
-              return DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment(-0.6 + 0.3 * math.sin(p), -1),
-                    end: const Alignment(0.4, 1),
-                    colors: <Color>[
-                      palette.canvas,
-                      Color.lerp(palette.canvas, palette.surfaceMuted, 0.65)!,
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
     );
   }
 }

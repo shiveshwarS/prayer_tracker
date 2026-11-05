@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../controllers/auth_controller.dart';
 import '../../controllers/compass_controller.dart';
@@ -44,6 +45,7 @@ class _MainShellState extends State<MainShell>
     with WidgetsBindingObserver, TickerProviderStateMixin {
   Timer? _refreshTimer;
   late final AnimationController _tabController;
+  int _tabDirection = 1;
   PrayerMoment? _celebration;
   int? _lastMomentSequence;
 
@@ -53,7 +55,7 @@ class _MainShellState extends State<MainShell>
     WidgetsBinding.instance.addObserver(this);
     _tabController = AnimationController(
       vsync: this,
-      duration: AppMotion.standard,
+      duration: AppMotion.page,
     )..value = 1;
     _lastMomentSequence = widget.prayerController.lastMoment?.sequence;
     widget.prayerController.addListener(_handlePrayerMoment);
@@ -97,9 +99,12 @@ class _MainShellState extends State<MainShell>
   }
 
   void _selectDestination(int index) {
-    if (index == widget.navigationController.index) {
+    final int currentIndex = widget.navigationController.index;
+    if (index == currentIndex) {
       return;
     }
+    _tabDirection = index > currentIndex ? 1 : -1;
+    HapticFeedback.selectionClick();
     if (!MediaQuery.of(context).disableAnimations) {
       _tabController.forward(from: 0);
     } else {
@@ -158,60 +163,62 @@ class _MainShellState extends State<MainShell>
                   bottom: false,
                   child: FadeTransition(
                     opacity: Tween<double>(
-                      begin: 0.72,
+                      begin: 0,
                       end: 1,
                     ).animate(tabCurve),
                     child: SlideTransition(
                       position: Tween<Offset>(
-                        begin: const Offset(0, 0.012),
+                        begin: Offset(_tabDirection * 0.14, 0),
                         end: Offset.zero,
                       ).animate(tabCurve),
-                      child: IndexedStack(
-                        index: index,
-                        children: <Widget>[
-                          TickerMode(
-                            enabled: index == 0,
-                            child: HomeView(
-                              authController: widget.authController,
-                              prayerController: widget.prayerController,
-                              prayerTimesController:
-                                  widget.prayerTimesController,
-                              onOpenProfile: () => _selectDestination(2),
-                              onOpenHistory: () => _selectDestination(2),
+                      child: ScaleTransition(
+                        scale: Tween<double>(
+                          begin: 0.992,
+                          end: 1,
+                        ).animate(tabCurve),
+                        child: IndexedStack(
+                          index: index,
+                          children: <Widget>[
+                            TickerMode(
+                              enabled: index == 0,
+                              child: HomeView(
+                                authController: widget.authController,
+                                prayerController: widget.prayerController,
+                                prayerTimesController:
+                                    widget.prayerTimesController,
+                                onOpenProfile: () => _selectDestination(2),
+                                onOpenHistory: () => _selectDestination(2),
+                              ),
                             ),
-                          ),
-                          TickerMode(
-                            enabled: index == 1,
-                            child: CompassView(
-                              compassController: widget.compassController,
-                              prayerTimesController:
-                                  widget.prayerTimesController,
-                              isActive: index == 1,
+                            TickerMode(
+                              enabled: index == 1,
+                              child: CompassView(
+                                compassController: widget.compassController,
+                                prayerTimesController:
+                                    widget.prayerTimesController,
+                                isActive: index == 1,
+                              ),
                             ),
-                          ),
-                          TickerMode(
-                            enabled: index == 2,
-                            child: ProfileView(
-                              authController: widget.authController,
-                              prayerController: widget.prayerController,
-                              prayerTimesController:
-                                  widget.prayerTimesController,
-                              themeController: widget.themeController,
-                              onResetData: widget.onResetData,
+                            TickerMode(
+                              enabled: index == 2,
+                              child: ProfileView(
+                                authController: widget.authController,
+                                prayerController: widget.prayerController,
+                                prayerTimesController:
+                                    widget.prayerTimesController,
+                                themeController: widget.themeController,
+                                onResetData: widget.onResetData,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-                bottomNavigationBar: AnimatedContainer(
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeOutCubic,
-                  child: AppBottomNavigation(
-                    selectedIndex: index,
-                    onSelected: _selectDestination,
-                  ),
+                bottomNavigationBar: AppBottomNavigation(
+                  selectedIndex: index,
+                  onSelected: _selectDestination,
                 ),
               ),
               if (celebration != null)
